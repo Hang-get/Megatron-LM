@@ -14,7 +14,21 @@
 
 """Shared runtime configuration for Megatron-FSDP contexts."""
 
+import enum
 from dataclasses import dataclass
+
+
+class GradSyncMode(enum.Enum):
+    """Control outer reduction and the completion wait; inner reduction always runs."""
+
+    SKIP_OUTER = enum.auto()
+    """Skip outer reduction and the automatic completion wait during accumulation."""
+
+    REDUCE_OUTER = enum.auto()
+    """Launch outer reduction; the caller must call ``finish_grad_sync()`` afterward."""
+
+    REDUCE_OUTER_AND_WAIT = enum.auto()
+    """Launch outer reduction and wait for all gradient reductions at autograd completion."""
 
 
 @dataclass(frozen=True)
@@ -29,13 +43,12 @@ class RuntimePolicy:
             https://github.com/NVIDIA/Megatron-LM/issues/6471.
         overlap_outer_communication: Run the last-microbatch DP-outer reduction on
             a separate stream, independently of overlap_allgather_reduction.
-        caller_managed_grad_sync: Leave gradient synchronization to the caller
-            while retaining automatic weight cleanup. The caller must call
-            finish_grad_sync() after all backward work, including delayed weight
-            gradients, and before reading or modifying gradients.
+        grad_sync_mode: Default gradient synchronization mode. Use REDUCE_OUTER
+            when the caller waits with finish_grad_sync() after all backward work,
+            including delayed weight gradients. finalize_gradients() scopes overrides.
     """
 
     use_symmetric_memory: bool = False
     overlap_allgather_reduction: bool = True
     overlap_outer_communication: bool = False
-    caller_managed_grad_sync: bool = False
+    grad_sync_mode: GradSyncMode = GradSyncMode.REDUCE_OUTER_AND_WAIT
