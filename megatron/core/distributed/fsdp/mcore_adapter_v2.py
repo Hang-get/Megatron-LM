@@ -50,7 +50,6 @@ try:
         RuntimePolicy,
         SchedulePolicy,
         ShardLayout,
-        finalize_gradients,
         fully_shard,
         fully_shard_context,
     )
@@ -479,7 +478,7 @@ class FullyShardedDataParallelV2(_BaseDataParallel):
 
         MCore's schedules wrap every microbatch but the last in ``no_sync_func``.
         """
-        with finalize_gradients(self.module.context, mode=GradientFinalizationMode.SKIP_OUTER):
+        with self.module.context.finalize_gradients(mode=GradientFinalizationMode.SKIP_OUTER):
             yield
 
     @torch.no_grad()
